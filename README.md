@@ -1,8 +1,8 @@
 # Srulque
 
-Pick the lock minigame but not gay.
+Pick the lock minigame.
 
-**Играть:** https://metulaimmensa.github.io/srulque/
+**Play:** https://metulaimmensa.github.io/srulque/
 
 ## Структура
 
