@@ -8,7 +8,8 @@ Android = Capacitor 7 wrapper (`webDir: docs`), appId `com.mentulaimmensa.srulqu
 
 ## Measured game parameters (from frame analysis of the original) — do not change without asking
 needle 128°/s, reverses on hit; miss = 0.667 s penalty at 10% speed (no reversal); sector 22.5° wide, shrinks linearly to 0 over 3.6 s;
-blue chance 0.25, +1.5 s; start 30 s; spawn interval max(0.45, 1.40 − 0.026·n), first at 1.25 s; after 35 s 13% chance of a second spawn.
+blue chance 0.25, +1.5 s; start 30 s; spawn interval max(0.45, 1.40 − 0.026·n), first at 1.25 s; after 35 s 13% chance of a second spawn; hit tolerance 2° (owner's choice, measured ~1°).
+No gameplay settings for players: P = DEFAULTS, frozen.
 
 ## Audio
 Menu: pad loop `music_pad.wav` (79 BPM, 8 bars) via WebAudio; drum sequencer locked to it: kick/snare from bar 5, hats on last three 16ths of each beat from bar 9, drums through 2.6 kHz lowpass.

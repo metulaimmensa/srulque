@@ -7,11 +7,11 @@
   const TICK_HZ = 120, TICK = 1 / TICK_HZ;
   const MAX_TICKS = TICK_HZ * 60 * 30;        // hard stop: 30 minutes of game time
 
-  // measured from the original minigame; leaderboard games must use exactly these
+  // measured from the original minigame (tol raised from 1° to 2° by the owner); leaderboard games must use exactly these
   const DEFAULTS = Object.freeze({
     speed: 128, width: 22.5, life: 3.6, blueChance: 0.25, blueBonus: 1.5,
     missFreeze: 0.667, missSpeed: 0.1, startTime: 30, firstSpawn: 1.25,
-    intStart: 1.40, intStep: 0.026, intFloor: 0.45, pairChance: 0.13, pairAfter: 35, tol: 1.0
+    intStart: 1.40, intStep: 0.026, intFloor: 0.45, pairChance: 0.13, pairAfter: 35, tol: 2.0
   });
 
   // mulberry32: tiny, fast, identical everywhere

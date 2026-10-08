@@ -199,11 +199,6 @@ kbd{font-family:var(--f-display);border:1px solid var(--hair);border-radius:4px;
         <div class="f"><label for="v_music">Музыка</label><input id="v_music" type="range" min="0" max="1" step="0.01"></div>
         <div class="f"><label for="v_sfx">Эффекты</label><input id="v_sfx" type="range" min="0" max="1" step="0.01"></div>
         <div class="f"><label for="v_drops" data-t="overlay">Капли на экране</label><input id="v_drops" type="range" min="0" max="1" step="0.05"></div>
-        <details>
-          <summary>Параметры игры</summary>
-          <div class="grid" id="fields"></div>
-          <div class="btns" style="margin-top:12px"><button class="ghost" id="resetBtn">ЗНАЧЕНИЯ С ВИДЕО</button></div>
-        </details>
       </div>
       <button class="ghost" data-go="pMain">НАЗАД</button>
     </div>
@@ -310,14 +305,9 @@ let TH=resolveTheme(themeId);
 
 /* ---------- params ---------- */
 const DEFAULTS={...window.SrulqueCore.DEFAULTS};
-const LABELS={speed:['Скорость стрелки','°/с'],width:['Ширина сектора','°'],life:['Жизнь сектора','с'],blueChance:['Шанс синего','0–1'],blueBonus:['Бонус синего','с'],missFreeze:['Штраф за промах','с'],missSpeed:['Скорость во время штрафа','доля, 0 = стоп'],startTime:['Стартовое время','с'],firstSpawn:['Первый спавн','с'],intStart:['Интервал: старт','с'],intStep:['Интервал: шаг','с/спавн'],intFloor:['Интервал: пол','с'],pairChance:['Шанс парного спавна','0–1'],pairAfter:['Парный спавн после','с'],tol:['Допуск попадания','°']};
-let P={...DEFAULTS,...store.get('lp_params',{})};
-const fields=$('fields');
-function buildFields(){fields.innerHTML='';for(const k in DEFAULTS){const d=document.createElement('div');d.className='f';
-  d.innerHTML=`<label for="p_${k}">${LABELS[k][0]}<small>${LABELS[k][1]}</small></label><input id="p_${k}" type="number" step="any" value="${P[k]}">`;
-  d.querySelector('input').addEventListener('change',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){P[k]=v;store.set('lp_params',P)}});fields.appendChild(d);}}
-$('resetBtn').onclick=()=>{P={...DEFAULTS};store.set('lp_params',P);buildFields()};
-buildFields();
+// gameplay parameters are fixed for everyone (same rules as the leaderboard server); old tuned values are discarded
+const P=Object.freeze({...DEFAULTS});
+store.set('lp_params',null);
 
 /* ---------- scores ---------- */
 let scores=store.get('srq_scores',null);
@@ -459,6 +449,7 @@ function play(name,gain=1,rate=1,delay=0){
   if(!A.ok||A.muted) return;const b=A.bufs[name];if(!b) return;
   const s=A.ctx.createBufferSource();s.buffer=b;s.playbackRate.value=rate;
   const g=A.ctx.createGain();g.gain.value=gain;s.connect(g);g.connect(A.sfxBus);s.start(A.ctx.currentTime+delay);
+  return s;
 }
 function playHit(){const n=TH.audio.hits.length;let i;do{i=1+Math.floor(Math.random()*n)}while(i===A.lastHit&&n>1);A.lastHit=i;play('hit'+i,GAIN.hit,0.97+Math.random()*0.06);}
 
@@ -587,8 +578,9 @@ function end(){
   const prev=bestScore(),rec=S.score>prev&&S.score>0;
   if(S.score>0)addScore({s:S.score,h:S.hits,b:S.blue,m:S.miss,d:Date.now()});
   showBest();
-  play('lose',GAIN.lose);if(rec)play('record',GAIN.record,1,0.9);
-  gameMusicStop(1.8);setTimeout(()=>{if(!running)menuMusic(true)},1600);
+  const STOP=1.8;gameMusicStop(STOP);
+  A.endSfx=[play('lose',GAIN.lose,1,STOP+0.05),rec&&play('record',GAIN.record,1,STOP+0.95)].filter(Boolean);
+  clearTimeout(A.menuT);A.menuT=setTimeout(()=>{if(!running)menuMusic(true)},(STOP+(rec?2.6:1.5))*1000);
   $('finalScore').textContent=S.score.toLocaleString('ru-RU');
   $('recBadge').hidden=!rec;
   $('finalStats').textContent=`Попаданий ${S.hits} (${TH.text.bonusPl} ${S.blue}) · промахов ${S.miss} · ${S.t.toFixed(1)} с`+(ranked?'':' · параметры изменены, в общую таблицу не идёт');
@@ -596,6 +588,7 @@ function end(){
   show('pOver');
 }
 function start(){
+  if(A.endSfx){for(const x of A.endSfx){try{x.stop()}catch(_){}}A.endSfx=null}clearTimeout(A.menuT);
   unlock();gameTicket=LB&&Core.sameParams(P)?takeTicket():null;newGame(gameTicket?gameTicket.seed:newSeed());running=true;prefetchTicket();paused=false;applyVol();last=performance.now();
   hideAll();document.body.classList.add('playing');
   menuMusic(false);gameMusicStart(0.05);
