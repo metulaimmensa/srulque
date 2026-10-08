@@ -235,6 +235,7 @@ kbd{font-family:var(--f-display);border:1px solid var(--hair);border-radius:4px;
 
 <audio id="mRetro" preload="auto" loop></audio>
 
+<script src="core.js"></script>
 <script>
 (()=>{
 const $=id=>document.getElementById(id);
@@ -290,7 +291,7 @@ let themeId=store.get('srq_theme','cyber');if(!canUse(themeId))themeId='cyber';
 let TH=resolveTheme(themeId);
 
 /* ---------- params ---------- */
-const DEFAULTS={speed:128,width:22.5,life:3.6,blueChance:0.25,blueBonus:1.5,missFreeze:0.667,missSpeed:0.1,startTime:30,firstSpawn:1.25,intStart:1.40,intStep:0.026,intFloor:0.45,pairChance:0.13,pairAfter:35,tol:1.0};
+const DEFAULTS={...window.SrulqueCore.DEFAULTS};
 const LABELS={speed:['Скорость стрелки','°/с'],width:['Ширина сектора','°'],life:['Жизнь сектора','с'],blueChance:['Шанс синего','0–1'],blueBonus:['Бонус синего','с'],missFreeze:['Штраф за промах','с'],missSpeed:['Скорость во время штрафа','доля, 0 = стоп'],startTime:['Стартовое время','с'],firstSpawn:['Первый спавн','с'],intStart:['Интервал: старт','с'],intStep:['Интервал: шаг','с/спавн'],intFloor:['Интервал: пол','с'],pairChance:['Шанс парного спавна','0–1'],pairAfter:['Парный спавн после','с'],tol:['Допуск попадания','°']};
 let P={...DEFAULTS,...store.get('lp_params',{})};
 const fields=$('fields');
@@ -444,50 +445,46 @@ $('v_sfx').oninput=e=>{A.sfx=+e.target.value;store.set('srq2_sfx',A.sfx);applyVo
 window.addEventListener('pointerdown',unlock,{once:true});
 window.addEventListener('keydown',unlock,{once:true});
 
-/* ---------- game state ---------- */
-let S=null,running=false,paused=false,last=0;
-const norm=a=>((a%360)+360)%360;
-const adiff=(a,b)=>{let d=norm(a-b);return d>180?d-360:d};
-const curW=s=>Math.max(0,P.width*(1-(S.t-s.born)/P.life));
-function newGame(){S={t:0,timeLeft:P.startTime,angle:0,dir:1,frozen:0,sectors:[],nSpawn:0,nextSpawn:P.firstSpawn,score:0,shown:0,hits:0,blue:0,miss:0,parts:[],waves:[],hist:[],lastTick:99}}
-function trySpawn(){
-  for(let k=0;k<40;k++){
-    const c=Math.random()*360,w=P.width;
-    if(Math.abs(adiff(c,S.angle))<w/2+4) continue;
-    let ok=true;for(const s of S.sectors){if(Math.abs(adiff(c,s.c))<(w+curW(s))/2+0.5){ok=false;break}}
-    if(!ok) continue;
-    S.sectors.push({c,born:S.t,blue:Math.random()<P.blueChance});return;
-  }
+/* ---------- game state ----------
+   The rules live in core.js (shared with the leaderboard server). Here: input queue, fixed-tick loop, visuals and sound. */
+const Core=window.SrulqueCore,norm=Core.norm,adiff=Core.adiff;
+let sim=null,S=null,running=false,paused=false,last=0,acc=0,clickQ=0,gameSeed=0,ranked=false,lastRun=null;
+Object.defineProperty(window,'__srq',{get:()=>({lastRun,live:S&&{angle:S.angle,t:S.t,sectors:S.sectors.map(x=>({c:x.c,born:x.born})),over:S.over}})});
+const curW=s=>sim.width(s);
+function newSeed(){try{return crypto.getRandomValues(new Uint32Array(1))[0]}catch(_){return (Math.random()*4294967296)>>>0}}
+function newGame(seed){
+  gameSeed=seed>>>0;ranked=Core.sameParams(P);sim=Core.createSim(gameSeed,P);S=sim.S;acc=0;clickQ=0;
+  Object.assign(S,{shown:0,parts:[],waves:[],hist:[],lastTick:99});
 }
 const lock=$('lock'),hub=$('hub');
 function retrigger(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls)}
-function pick(){
-  if(!running||paused||S.frozen>0) return;
-  let hit=-1;
-  for(let i=0;i<S.sectors.length;i++){const s=S.sectors[i];if(S.t-s.born<0.05) continue;if(Math.abs(adiff(S.angle,s.c))<=curW(s)/2+P.tol){hit=i;break}}
-  if(hit>=0){
-    const s=S.sectors.splice(hit,1)[0];const w=curW(s);
-    S.score+=1000;S.hits++;S.dir*=-1;
-    burst(S.angle,s.blue);S.waves.push({c:s.c,w:Math.max(w,4),t:0,blue:s.blue});
+// a tap is queued and applied at the start of the next game tick, exactly like the server replays it
+function pick(){if(!running||paused||!S||S.over)return;clickQ++}
+function applyClick(){
+  const r=sim.click();
+  if(r.type==='hit'){
+    const s=r.sector;
+    burst(S.angle,s.blue);S.waves.push({c:s.c,w:Math.max(r.width,4),t:0,blue:s.blue});
     playHit();buzz(s.blue?'MEDIUM':'LIGHT');
-    if(s.blue){S.timeLeft+=P.blueBonus;S.blue++;play('blue',GAIN.blue);popText('+'+P.blueBonus);retrigger(hub,'flash-blue');setTimeout(()=>hub.classList.remove('flash-blue'),180)}
+    if(s.blue){play('blue',GAIN.blue);popText('+'+P.blueBonus);retrigger(hub,'flash-blue');setTimeout(()=>hub.classList.remove('flash-blue'),180)}
     else{retrigger(hub,'flash');setTimeout(()=>hub.classList.remove('flash'),140)}
-  }else{
-    S.frozen=P.missFreeze;S.miss++;play('miss',GAIN.miss);buzz('HEAVY');
+  }else if(r.type==='miss'){
+    play('miss',GAIN.miss);buzz('HEAVY');
     if(!reduce) retrigger(lock,'shake');retrigger(hub,'glitch');
   }
 }
 function popText(t){const d=document.createElement('div');d.className='pop';d.textContent=t;hub.appendChild(d);setTimeout(()=>d.remove(),950)}
 function burst(a,blue){for(let i=0;i<24;i++)S.parts.push({a:a+(Math.random()-.5)*12,r:0.15+Math.random()*0.8,vr:(Math.random()-.35)*0.5,va:(Math.random()-.5)*60,life:0.45+Math.random()*0.5,t:0,blue,sz:0.8+Math.random()*1.8})}
 function step(dt){
-  S.t+=dt;S.timeLeft-=dt;
-  if(S.timeLeft<=0){S.timeLeft=0;end();return}
-  const ramp=Math.min(1,S.t/0.25),k=S.frozen>0?P.missSpeed:1;
-  if(S.frozen>0)S.frozen=Math.max(0,S.frozen-dt);
-  S.angle=norm(S.angle+S.dir*P.speed*ramp*k*dt);
+  acc+=dt;
+  while(acc>=Core.TICK&&!S.over){
+    acc-=Core.TICK;
+    while(clickQ>0){clickQ--;applyClick()}
+    sim.step();
+  }
+  if(S.over){end();return}
+  // visuals only below: free to use Math.random and real frame time
   S.hist.push({a:S.angle,t:S.t});while(S.hist.length&&S.hist[0].t<S.t-0.16)S.hist.shift();
-  while(S.t>=S.nextSpawn){trySpawn();if(S.t>P.pairAfter&&Math.random()<P.pairChance)trySpawn();S.nSpawn++;S.nextSpawn+=Math.max(P.intFloor,P.intStart-P.intStep*S.nSpawn)}
-  S.sectors=S.sectors.filter(s=>curW(s)>0.3);
   S.shown+=Math.min(S.score-S.shown,2600*dt);
   for(const p of S.parts){p.t+=dt;p.r+=p.vr*dt;p.a+=p.va*dt}S.parts=S.parts.filter(p=>p.t<p.life);
   for(const w of S.waves)w.t+=dt;S.waves=S.waves.filter(w=>w.t<0.45);
@@ -497,6 +494,7 @@ function step(dt){
   lock.classList.toggle('danger',S.timeLeft<=5);
 }
 function end(){
+  lastRun={seed:gameSeed,clicks:S.clicks.slice(),score:S.score,ranked,ticks:S.tick};
   running=false;document.body.classList.remove('playing');lock.classList.remove('danger');
   const prev=bestScore(),rec=S.score>prev&&S.score>0;
   if(S.score>0)addScore({s:S.score,h:S.hits,b:S.blue,m:S.miss,d:Date.now()});
@@ -505,11 +503,11 @@ function end(){
   gameMusicStop(1.8);setTimeout(()=>{if(!running)menuMusic(true)},1600);
   $('finalScore').textContent=S.score.toLocaleString('ru-RU');
   $('recBadge').hidden=!rec;
-  $('finalStats').textContent=`Попаданий ${S.hits} (${TH.text.bonusPl} ${S.blue}) · промахов ${S.miss} · ${S.t.toFixed(1)} с`;
+  $('finalStats').textContent=`Попаданий ${S.hits} (${TH.text.bonusPl} ${S.blue}) · промахов ${S.miss} · ${S.t.toFixed(1)} с`+(ranked?'':' · параметры изменены, в общую таблицу не идёт');
   show('pOver');
 }
 function start(){
-  unlock();newGame();running=true;paused=false;applyVol();last=performance.now();
+  unlock();newGame(newSeed());running=true;paused=false;applyVol();last=performance.now();
   hideAll();document.body.classList.add('playing');
   menuMusic(false);gameMusicStart(0.05);
 }
@@ -691,7 +689,7 @@ applyTheme(themeId,true);
 function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;if(running&&!paused)step(dt);draw(paused?0:dt);hud();drawCity(dt);drawDrops(dt);requestAnimationFrame(loop)}
 requestAnimationFrame(t=>{last=t;loop(t)});
 // tap or click anywhere on the screen picks, except on controls
-addEventListener('pointerdown',e=>{if(e.button!==undefined&&e.button!==0)return;if(!running||paused)return;if(e.target.closest('button,input,summary,details,.panel'))return;e.preventDefault();pick()},{passive:false});
+addEventListener('pointerdown',e=>{if(e.button!==undefined&&e.button!==0)return;if(!running||paused)return;if(e.target&&e.target.closest&&e.target.closest('button,input,summary,details,.panel'))return;e.preventDefault();pick()},{passive:false});
 addEventListener('contextmenu',e=>{if(running)e.preventDefault()});
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
