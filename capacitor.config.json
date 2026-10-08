@@ -1,0 +1,6 @@
+{
+  "appId": "com.mentulaimmensa.srulque",
+  "appName": "Srulque",
+  "webDir": "docs",
+  "android": { "backgroundColor": "#06050c" }
+}
