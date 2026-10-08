@@ -42,6 +42,10 @@ body.scene .logo{visibility:hidden}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;flex:none}
 @media (max-width:560px){header{flex-direction:column;justify-content:center;gap:8px}.logo{text-align:center;text-indent:.22em}}
 @media (hover:none) and (pointer:coarse){.hint{display:none}}
+/* touch screens get a restart button under the lock while a game runs; keyboards use R */
+.restart{display:none;position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:4;padding:9px 22px;font-size:.78rem}
+body.playing .restart{display:block}
+@media (hover:hover) and (pointer:fine){body.playing .restart{display:none}}
 body.playing{cursor:crosshair;user-select:none;-webkit-user-select:none}
 body{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .neon{color:var(--neon-ink);text-shadow:0 0 1px #fff,0 0 6px rgba(var(--c1),.95),0 0 16px rgba(var(--c1),.75),0 0 34px rgba(var(--c1),.45)}
@@ -311,6 +315,7 @@ body[data-lock="brass"] .grain{opacity:.1}
       <h3>ПАУЗА</h3>
       <div class="menu-list">
         <button class="play" data-act="resume">ПРОДОЛЖИТЬ</button>
+        <button class="ghost" data-act="restart">ЗАНОВО</button>
         <button class="ghost" data-act="quit">В МЕНЮ</button>
       </div>
     </div>
@@ -328,7 +333,8 @@ body[data-lock="brass"] .grain{opacity:.1}
     </div>
   </div>
 
-  <div class="hint">ЛКМ, тап или <kbd>Space</kbd>: пик · <kbd>Esc</kbd>: пауза</div>
+  <div class="hint">ЛКМ, тап или <kbd>Space</kbd>: пик · <kbd>R</kbd>: заново · <kbd>Esc</kbd>: пауза</div>
+  <button class="ghost restart" data-act="restart" aria-label="Начать партию заново">ЗАНОВО</button>
   </div>
 </div>
 
@@ -539,7 +545,7 @@ function hideAll(){curPanel='';for(const p of PANELS)$(p).hidden=true;updateScen
 $('exitBtn').hidden=!isApp;
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();show(b.dataset.go)}));
 document.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const a=b.dataset.act;
-  if(a==='play')start();else if(a==='resume')setPause(false);else if(a==='quit')quitToMenu();else if(a==='menu')toMenu();
+  if(a==='play')start();else if(a==='restart')restart();else if(a==='resume')setPause(false);else if(a==='quit')quitToMenu();else if(a==='menu')toMenu();
   else if(a==='exit'){try{window.Capacitor.Plugins.App.exitApp()}catch(_){}}}));
 
 /* ---------- audio ---------- */
@@ -774,6 +780,8 @@ function start(){
   if(TH.audio.start)play('start',GAIN.start);
 }
 function setPause(v){if(!running)return;paused=v;last=performance.now();applyVol();if(v)show('pPause');else hideAll()}
+// drop the current game (no score, nothing submitted) and start a fresh one
+function restart(){if(!running&&$('pOver').hidden)return;running=false;paused=false;S=null;lock.classList.remove('danger');start()}
 function quitToMenu(){running=false;document.body.classList.remove('playing');paused=false;applyVol();S=null;lock.classList.remove('danger');gameMusicStop(1.2);setTimeout(()=>{if(!running)menuMusic(true)},1000);show('pMain')}
 function toMenu(){S=null;show('pMain')}
 
@@ -1347,6 +1355,7 @@ addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
   if(e.code==='Space'){e.preventDefault();if(!gate.hidden){passGate();return}if(running&&!paused)pick();else if(!running&&($('pMain').hidden===false||$('pOver').hidden===false))start()}
   if((e.code==='Escape'||e.code==='F9')&&running){e.preventDefault();setPause(!paused)}
+  if(e.code==='KeyR'&&!e.ctrlKey&&!e.metaKey&&(running||!$('pOver').hidden)){e.preventDefault();restart()}
 });
 /* ---------- native app (APK): back button, haptics ---------- */
 const Cap=window.Capacitor,Plug=Cap&&Cap.Plugins||{};
@@ -1366,7 +1375,7 @@ if(isApp&&Plug.App){
 const gate=$('gate');
 function passGate(e){if(gate.hidden)return;if(e)e.stopPropagation();gate.hidden=true;show('pMain');unlock()}
 if(isApp){gate.hidden=true;setTimeout(unlock,50)}
-else{$('pMain').hidden=true;gate.addEventListener('pointerdown',passGate);gate.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();passGate(e)}})}
+else{$('pMain').hidden=true;gate.addEventListener('click',passGate);gate.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();passGate(e)}})}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused)setPause(true)});
 })();
 </script>
