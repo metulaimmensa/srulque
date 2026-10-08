@@ -329,7 +329,7 @@ function renderScores(){
 /* ---------- global leaderboard ----------
    The server hands out a ticket (seed) before the game; after it we send only the click ticks.
    The server replays the game with core.js and computes the score itself. */
-const LB_URL='';                       // Yandex Cloud Function link, filled in after deploy
+const LB_URL='https://functions.yandexcloud.net/d4ejbi77jh145ke79c0f';                       // Yandex Cloud Function link, filled in after deploy
 const LB=!!LB_URL;
 function rid(n){const a=new Uint8Array(n);try{crypto.getRandomValues(a)}catch(_){for(let i=0;i<n;i++)a[i]=Math.random()*256|0}return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 let device=store.get('srq_device',null);if(!device){device=rid(16);store.set('srq_device',device)}
