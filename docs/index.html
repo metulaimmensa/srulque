@@ -112,13 +112,19 @@ summary{cursor:pointer;color:var(--muted);font:700 .74rem var(--f-display);lette
 
 .hint{color:var(--muted);font-size:.84rem;text-align:center;line-height:1.5}
 kbd{font-family:var(--f-display);border:1px solid var(--hair);border-radius:4px;padding:0 6px;font-size:.78rem;background:rgba(255,255,255,.05)}
-@media (prefers-reduced-motion:reduce){.flicker{animation:none}.lock.shake{animation:none}.pop{animation-duration:.01s}}
+.gate{position:fixed;inset:0;z-index:7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(6,5,12,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;text-align:center;padding-inline:16px}
+.gate h2{margin:0;font:900 clamp(2.4rem,12vw,4.2rem)/1 var(--f-display);letter-spacing:.18em;text-indent:.18em}
+.gate .tap{font:700 .9rem var(--f-display);letter-spacing:.3em;text-indent:.3em;color:var(--muted);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.gate .tap{animation:none}.flicker{animation:none}.lock.shake{animation:none}.pop{animation-duration:.01s}}
 </style>
 
 <canvas id="city" aria-hidden="true"></canvas>
 <div class="veil"></div>
 <canvas id="drops" aria-hidden="true"></canvas>
 <div class="grain"></div>
+
+<div class="gate" id="gate" role="button" tabindex="0" aria-label="Войти в игру"><h2 class="neon flicker">SRULQUE</h2><div class="tap">КОСНИСЬ, ЧТОБЫ ВОЙТИ</div></div>
 
 <div class="wrap">
   <header>
@@ -265,7 +271,7 @@ const AC=window.AudioContext||window.webkitAudioContext;
 const A={ctx:null,ok:false,bufs:{},muted:!!store.get('srq_muted',false),music:store.get('srq2_music',0.8),sfx:store.get('srq2_sfx',0.7),cur:null,lastHit:-1};
 $('v_music').value=A.music;$('v_sfx').value=A.sfx;
 const SFX={hit1:'hit1.wav',hit2:'hit2.wav',hit3:'hit3.wav',hit4:'hit4.wav',hit5:'hit5.wav',hit6:'hit6.wav',tick:'tick.wav',miss:'miss.wav',blue:'blue.wav',lose:'lose_riot.wav',start:'start_impact.mp3',record:'record.mp3'};
-const GAIN={hit:0.6,tick:1.4,miss:0.8,blue:1.0,lose:0.6,start:0.35,record:0.5};
+const GAIN={hit:0.45,tick:1.4,miss:0.8,blue:0.7,lose:0.6,start:0.35,record:0.5};
 const MUSIC_BASE={retro:0.34,pad:0.62,kick:0.7,snare:0.5,hat:0.15};
 const BPM_PAD=79,BEAT=60/BPM_PAD,STEP=BEAT/4,DRUMS_FROM_BAR=4,HATS_FROM_BAR=8;
 function initAudio(){
@@ -597,7 +603,7 @@ addEventListener('pointerdown',e=>{if(e.button!==undefined&&e.button!==0)return;
 addEventListener('contextmenu',e=>{if(running)e.preventDefault()});
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
-  if(e.code==='Space'){e.preventDefault();if(running&&!paused)pick();else if(!running&&($('pMain').hidden===false||$('pOver').hidden===false))start()}
+  if(e.code==='Space'){e.preventDefault();if(!gate.hidden){passGate();return}if(running&&!paused)pick();else if(!running&&($('pMain').hidden===false||$('pOver').hidden===false))start()}
   if((e.code==='Escape'||e.code==='F9')&&running){e.preventDefault();setPause(!paused)}
 });
 /* ---------- native app (APK): back button, haptics ---------- */
@@ -614,6 +620,11 @@ if(isApp&&Plug.App){
   try{Plug.App.addListener('pause',()=>{if(running&&!paused)setPause(true);if(A.ctx)A.ctx.suspend().catch(()=>{})})}catch(_){}
   try{Plug.App.addListener('resume',()=>{if(A.ctx)A.ctx.resume().catch(()=>{})})}catch(_){}
 }
+/* entry: browsers keep audio locked until the first tap, so the web build opens with a tap-to-enter screen; the app unlocks audio by itself */
+const gate=$('gate');
+function passGate(e){if(gate.hidden)return;if(e)e.stopPropagation();gate.hidden=true;show('pMain');unlock()}
+if(isApp){gate.hidden=true;setTimeout(unlock,50)}
+else{$('pMain').hidden=true;gate.addEventListener('pointerdown',passGate);gate.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();passGate(e)}})}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused)setPause(true)});
 })();
 </script>

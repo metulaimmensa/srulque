@@ -5,6 +5,7 @@ import android.view.WindowManager;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -12,6 +13,11 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // let the game start its music without waiting for a first tap
+        if (bridge != null) {
+            WebView wv = bridge.getWebView();
+            if (wv != null) wv.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        }
         hideBars();
     }
 
