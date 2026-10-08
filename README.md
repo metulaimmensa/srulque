@@ -1,10 +1,8 @@
 # Srulque
 
-Неоновая аркада про взлом замка. Жми, когда стрелка внутри сектора.
+Pick the lock minigame but not gay.
 
 **Играть:** https://metulaimmensa.github.io/srulque/
-
-Created by Mentula Immensa · Music and sounds: Traumträumer
 
 ## Структура
 
