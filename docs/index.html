@@ -94,6 +94,9 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .panel .big{font:900 clamp(2rem,11cqw,3.2rem)/1 var(--f-display);font-variant-numeric:tabular-nums;color:#f4f9ff;text-shadow:0 0 6px rgba(var(--c2-hi),.8),0 0 22px rgba(var(--c2),.5)}
 .menu-list{display:flex;flex-direction:column;gap:9px;width:min(100%,240px)}
 .menu-list button{width:100%}
+.quickvol{display:flex;flex-direction:column;gap:4px;width:min(100%,240px)}
+.quickvol label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.8rem;color:var(--muted)}
+.quickvol input{width:140px;flex:none;accent-color:rgb(var(--c1))}
 .badge{font:700 .76rem var(--f-display);letter-spacing:.22em;padding:5px 12px;border-radius:999px;color:#fff;border:1px solid rgba(var(--c1),.9);background:rgba(var(--c1),.14);box-shadow:0 0 14px rgba(var(--c1),.55);text-shadow:0 0 6px rgba(var(--c1),.9)}
 .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .play{font:900 1rem var(--f-display);letter-spacing:.24em;text-indent:.24em;color:#fff;padding:12px 26px;border-radius:10px;cursor:pointer;
@@ -258,6 +261,10 @@ body[data-lock="brass"] .grain{opacity:.1}
         <button class="ghost" data-go="pRules">КАК ИГРАТЬ</button>
         <button class="ghost" data-go="pCredits">ТИТРЫ</button>
         <button class="ghost" data-act="exit" id="exitBtn" hidden>ВЫХОД</button>
+      </div>
+      <div class="quickvol">
+        <label for="m_music">Музыка<input id="m_music" type="range" min="0" max="1" step="0.01"></label>
+        <label for="m_sfx">Эффекты<input id="m_sfx" type="range" min="0" max="1" step="0.01"></label>
       </div>
     </div>
 
@@ -475,6 +482,7 @@ function rid(n){const a=new Uint8Array(n);try{crypto.getRandomValues(a)}catch(_)
 let device=store.get('srq_device',null);if(!device){device=rid(16);store.set('srq_device',device)}
 let nick=store.get('srq_nick','');
 let ticket=null,gameTicket=null,pending=store.get('srq_pending',null),scoreTab='mine';
+if(pending&&pending.v!==window.SrulqueCore.VERSION){pending=null;store.set('srq_pending',null)}   // played on old rules
 async function api(action,body,q=''){
   const c=new AbortController(),to=setTimeout(()=>c.abort(),8000);
   try{
@@ -491,11 +499,12 @@ async function submitPending(quiet){
   if(!LB||!pending||!nick)return;
   if(!quiet)lbStatus('Отправляю в общую таблицу…');
   try{
-    const r=await api('submit',{ticket:pending.ticket,device,nick,clicks:pending.clicks});
+    const r=await api('submit',{ticket:pending.ticket,device,nick,clicks:pending.clicks,v:pending.v});
     pending=null;store.set('srq_pending',null);
     if(!quiet)lbStatus(`В мире: <b>#${r.rank}</b> из ${r.total}`+(r.improved?' · новый личный рекорд':` · твой лучший: ${r.best.toLocaleString('ru-RU')}`)+(r.nickPending?'<br>Ник появится в таблице после проверки, пока ты там как '+String(r.name||'').replace(/[<>&]/g,'')+'.':''));
   }catch(e){
     if(e.status===400&&/nick/.test(e.message)){nick='';store.set('srq_nick','');if(!quiet){$('nickForm').hidden=false;lbStatus('Такой ник не пройдёт. Другой?')}return}
+    if(e.status===426){pending=null;store.set('srq_pending',null);if(!quiet)lbStatus('Правила обновились. Обнови игру, чтобы попадать в таблицу.');return}
     if(e.status){pending=null;store.set('srq_pending',null);if(!quiet)lbStatus('Сервер не принял результат.');return}
     if(!quiet)lbStatus('Нет связи с сервером. Отправлю при следующем запуске.');
   }
@@ -505,7 +514,7 @@ function lbAfterGame(run,tk){
   if(!LB||run.score<=0)return;
   if(!run.ranked){return}
   if(!tk){lbStatus('Не было связи с сервером на старте, в общую таблицу эта партия не попадёт.');return}
-  pending={ticket:tk.ticket,clicks:run.clicks,score:run.score};store.set('srq_pending',pending);
+  pending={ticket:tk.ticket,clicks:run.clicks,score:run.score,v:Core.VERSION};store.set('srq_pending',pending);
   if(nick)submitPending(false);
   else{$('lbOver').hidden=false;$('nickForm').hidden=false;$('lbStatus').textContent='Придумай ник, чтобы попасть в общую таблицу.';setTimeout(()=>{try{$('nickInput').focus()}catch(_){}},50)}
 }
@@ -551,7 +560,9 @@ document.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',e=
 /* ---------- audio ---------- */
 const AC=window.AudioContext||window.webkitAudioContext;
 const A={ctx:null,ok:false,bufs:{},muted:!!store.get('srq_muted',false),music:store.get('srq2_music',0.8),sfx:store.get('srq2_sfx',0.7),cur:null,lastHit:-1};
-$('v_music').value=A.music;$('v_sfx').value=A.sfx;
+// volume sliders live in two places (main menu and settings) and stay in sync
+const volInputs={music:['v_music','m_music'],sfx:['v_sfx','m_sfx']};
+for(const k in volInputs)for(const id of volInputs[k])$(id).value=A[k];
 // per-theme audio settings, refreshed by applyTheme()
 let GAIN,MUSIC_BASE,STEP,DRUMS_FROM_BAR,HATS_FROM_BAR;
 function themeAudioVars(){const a=TH.audio;GAIN=a.gain;MUSIC_BASE=a.music;STEP=60/a.menu.bpm/4;DRUMS_FROM_BAR=a.menu.drumsFrom;HATS_FROM_BAR=a.menu.hatsFrom}
@@ -695,8 +706,10 @@ function gameMusicStop(dur=1.8){
 $('muteBtn').onclick=e=>{e.stopPropagation();A.muted=!A.muted;store.set('srq_muted',A.muted);
   $('muteBtn').textContent='ЗВУК: '+(A.muted?'ВЫКЛ':'ВКЛ');$('muteBtn').setAttribute('aria-pressed',A.muted);unlock();applyVol();};
 $('muteBtn').textContent='ЗВУК: '+(A.muted?'ВЫКЛ':'ВКЛ');
-$('v_music').oninput=e=>{A.music=+e.target.value;store.set('srq2_music',A.music);applyVol()};
-$('v_sfx').oninput=e=>{A.sfx=+e.target.value;store.set('srq2_sfx',A.sfx);applyVol();playHit()};
+let volHitT=0;
+for(const k in volInputs)for(const id of volInputs[k])$(id).addEventListener('input',e=>{
+  A[k]=+e.target.value;store.set(k==='music'?'srq2_music':'srq2_sfx',A[k]);for(const o of volInputs[k])if(o!==id)$(o).value=A[k];
+  unlock();applyVol();if(k==='sfx'&&performance.now()-volHitT>120){volHitT=performance.now();playHit()}});
 window.addEventListener('pointerdown',unlock,{once:true});
 window.addEventListener('keydown',unlock,{once:true});
 

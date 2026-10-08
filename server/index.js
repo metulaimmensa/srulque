@@ -39,7 +39,9 @@ const tag = device => crypto.createHash('sha256').update(String(device)).digest(
 function sub(d) { const p = path.join(DIR, d); fs.mkdirSync(p, { recursive: true }); return p; }
 function readJson(file) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return null; } }
 function writeJson(file, obj) { fs.writeFileSync(file, JSON.stringify(obj)); }   // one object per file; no rename (bucket mounts may not support it)
-const scoreFile = device => path.join(sub('scores'), device + '.json');
+// every rules version gets its own table: changing the rules starts a clean season, old results stay on disk untouched
+const SCORES = Core.VERSION === 1 ? 'scores' : 'scores-v' + Core.VERSION;
+const scoreFile = device => path.join(sub(SCORES), device + '.json');
 const banFile = device => path.join(sub('bans'), device + '.json');
 
 /* ---------- nickname filter (first line of defence; moderation is the second) ---------- */
@@ -82,7 +84,7 @@ const cleanNick = raw => nickProblem(raw) ? null : raw.normalize('NFC').replace(
 /* ---------- table ---------- */
 const shown = e => (MODE === 'post' || e.approved) && e.nick ? e.nick : 'Игрок ' + tag(e.device);
 function allScores() {
-  const d = sub('scores');
+  const d = sub(SCORES);
   return fs.readdirSync(d).filter(f => f.endsWith('.json')).map(f => {
     const e = readJson(path.join(d, f));
     if (e && !e.device) e.device = f.slice(0, -5);
@@ -102,6 +104,7 @@ function ticket(body) {
 
 function submit(body) {
   const { ticket: id, device, clicks } = body;
+  if (body.v !== Core.VERSION) return fail(426, 'update required');   // client plays other rules than this server replays
   if (!idOk(id) || !idOk(device)) return fail(400, 'bad request');
   if (!Array.isArray(clicks) || clicks.length > 20000) return fail(400, 'bad clicks');
   const nick = cleanNick(body.nick);

@@ -7,11 +7,11 @@
   const TICK_HZ = 120, TICK = 1 / TICK_HZ;
   const MAX_TICKS = TICK_HZ * 60 * 30;        // hard stop: 30 minutes of game time
 
-  // measured from the original minigame (tol raised from 1° to 2° by the owner); leaderboard games must use exactly these
+  // measured from the original minigame (tol: measured ~1°, owner set 1.5° after beta feedback); leaderboard games must use exactly these
   const DEFAULTS = Object.freeze({
     speed: 128, width: 22.5, life: 3.6, blueChance: 0.25, blueBonus: 1.5,
     missFreeze: 0.667, missSpeed: 0.1, startTime: 30, firstSpawn: 1.25,
-    intStart: 1.40, intStep: 0.026, intFloor: 0.45, pairChance: 0.13, pairAfter: 35, tol: 2.0
+    intStart: 1.40, intStep: 0.026, intFloor: 0.45, pairChance: 0.13, pairAfter: 35, tol: 1.5
   });
 
   // mulberry32: tiny, fast, identical everywhere
@@ -114,7 +114,7 @@
     return { valid: true, score: S.score, hits: S.hits, blue: S.blue, miss: S.miss, ticks: S.tick, seconds: S.tick * TICK };
   }
 
-  const api = { TICK, TICK_HZ, DEFAULTS, rng, norm, adiff, createSim, replay, sameParams, VERSION: 1 };
+  const api = { TICK, TICK_HZ, DEFAULTS, rng, norm, adiff, createSim, replay, sameParams, VERSION: 2 }   // bump VERSION whenever the rules change: the server keeps a separate table per version;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SrulqueCore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -8,7 +8,7 @@ Android = Capacitor 7 wrapper (`webDir: docs`), appId `com.mentulaimmensa.srulqu
 
 ## Measured game parameters (from frame analysis of the original) — do not change without asking
 needle 128°/s, reverses on hit; miss = 0.667 s penalty at 10% speed (no reversal); sector 22.5° wide, shrinks linearly to 0 over 3.6 s;
-blue chance 0.25, +1.5 s; start 30 s; spawn interval max(0.45, 1.40 − 0.026·n), first at 1.25 s; after 35 s 13% chance of a second spawn; hit tolerance 2° (owner's choice, measured ~1°).
+blue chance 0.25, +1.5 s; start 30 s; spawn interval max(0.45, 1.40 − 0.026·n), first at 1.25 s; after 35 s 13% chance of a second spawn; hit tolerance 1.5° (owner's choice after beta feedback; was 2°, measured ~1°).
 No gameplay settings for players: P = DEFAULTS, frozen.
 
 ## Audio
@@ -28,6 +28,7 @@ Menu art: `bg.menuArt` image (steam: `img/menu.jpg`, owner's AI render with bake
 ## Core & leaderboard
 Rules live in `docs/core.js` (UMD, used by the game and the server): mulberry32 seeded RNG, 120 Hz fixed tick, clicks applied at tick start, `replay(seed, clicks)` recomputes score. Never use Math.random/time/trig inside core. Visual effects stay in index.html.
 Server: `server/index.js` = Yandex Cloud Function, storage = Object Storage bucket mounted at `/function/storage/data` (one JSON per ticket/device, no rename). Flow: `ticket` (server seed, prefetched) → play → `submit` clicks → server replays, checks ticket single-use, device match, TTL 6 h, wall-clock ≥ game time − 3 s, nick filter. `top` = best per device.
+Rules versions: `Core.VERSION` (now 2). Bump it on any rule change: client sends `v` with submit, server answers 426 to other versions and keeps one table per version (`scores` for v1, `scores-v<N>` after), so a rule change = clean season, old results stay on disk.
 Moderation: env `MODERATION` (default `post`: nick shown at once after filter; `pre`: shown only after owner approval, else "Игрок XXXX"). Owner chose post-moderation. Blacklist in server (profanity, nazism, drugs, politics, sexual) + owner's words in bucket `config/words.json`. Admin: `docs/admin.html` → `?action=admin` with env `ADMIN_KEY` (owner keeps it in D:\claude\Srulque\signing\admin-key.txt, never in repo): list/approve/rename/hide/delete/ban/unban/words.
 Client: `LB_URL` const in index.html (empty = leaderboard hidden). Tuned params (≠ DEFAULTS) are never submitted. Failed submits retry on next launch (`srq_pending`).
 Deploy: `server/build.sh` → `srulque-server.zip`; owner uploads it in the Yandex console (see `server/DEPLOY.md`).
