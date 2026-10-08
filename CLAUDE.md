@@ -25,6 +25,7 @@ To add a skin: put sounds in `docs/themes/<id>/`, add a THEMES entry; new backgr
 ## Core & leaderboard
 Rules live in `docs/core.js` (UMD, used by the game and the server): mulberry32 seeded RNG, 120 Hz fixed tick, clicks applied at tick start, `replay(seed, clicks)` recomputes score. Never use Math.random/time/trig inside core. Visual effects stay in index.html.
 Server: `server/index.js` = Yandex Cloud Function, storage = Object Storage bucket mounted at `/function/storage/data` (one JSON per ticket/device, no rename). Flow: `ticket` (server seed, prefetched) → play → `submit` clicks → server replays, checks ticket single-use, device match, TTL 6 h, wall-clock ≥ game time − 3 s, nick filter. `top` = best per device.
+Moderation: env `MODERATION` (default `pre`: nick shown only after owner approval, else "Игрок XXXX"; `post` shows at once). Blacklist in server (profanity, nazism, drugs, politics, sexual) + owner's words in bucket `config/words.json`. Admin: `docs/admin.html` → `?action=admin` with env `ADMIN_KEY` (owner keeps it in D:\claude\Srulque\signing\admin-key.txt, never in repo): list/approve/rename/hide/delete/ban/unban/words.
 Client: `LB_URL` const in index.html (empty = leaderboard hidden). Tuned params (≠ DEFAULTS) are never submitted. Failed submits retry on next launch (`srq_pending`).
 Deploy: `server/build.sh` → `srulque-server.zip`; owner uploads it in the Yandex console (see `server/DEPLOY.md`).
 

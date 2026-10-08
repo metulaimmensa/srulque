@@ -353,7 +353,7 @@ async function submitPending(quiet){
   try{
     const r=await api('submit',{ticket:pending.ticket,device,nick,clicks:pending.clicks});
     pending=null;store.set('srq_pending',null);
-    if(!quiet)lbStatus(`В мире: <b>#${r.rank}</b> из ${r.total}`+(r.improved?' · новый личный рекорд':` · твой лучший: ${r.best.toLocaleString('ru-RU')}`));
+    if(!quiet)lbStatus(`В мире: <b>#${r.rank}</b> из ${r.total}`+(r.improved?' · новый личный рекорд':` · твой лучший: ${r.best.toLocaleString('ru-RU')}`)+(r.nickPending?'<br>Ник появится в таблице после проверки, пока ты там как '+String(r.name||'').replace(/[<>&]/g,'')+'.':''));
   }catch(e){
     if(e.status===400&&/nick/.test(e.message)){nick='';store.set('srq_nick','');if(!quiet){$('nickForm').hidden=false;lbStatus('Такой ник не пройдёт. Другой?')}return}
     if(e.status){pending=null;store.set('srq_pending',null);if(!quiet)lbStatus('Сервер не принял результат.');return}
@@ -389,7 +389,7 @@ async function renderWorld(){
       const who=document.createElement('td');who.textContent=e.nick;
       const sc=document.createElement('td');sc.className='s';sc.textContent=e.score.toLocaleString('ru-RU');
       tr.append(n,who,sc);t.appendChild(tr)});
-    me.hidden=false;me.textContent=r.me?`Ты: #${r.me.rank} из ${r.total} · ${r.me.score.toLocaleString('ru-RU')}`:`Тебя пока нет в таблице. Игроков: ${r.total}`;
+    me.hidden=false;me.textContent=r.me?`Ты: #${r.me.rank} из ${r.total} · ${r.me.score.toLocaleString('ru-RU')}`+(r.me.nickPending?' · ник на проверке':''):`Тебя пока нет в таблице. Игроков: ${r.total}`;
   }catch(_){if(req!==topReq)return;$('scoreEmpty').hidden=false;$('scoreEmpty').textContent='Нет связи с сервером таблицы.'}
 }
 if(!LB){$('tabMine').parentElement.hidden=true}else{$('nickRow').hidden=false}
