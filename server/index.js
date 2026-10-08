@@ -7,8 +7,8 @@
    POST ?action=submit  {ticket, device, nick, clicks} -> {score, best, improved, rank, total, nickPending}
    GET  ?action=top     [&device=...]                   -> {top:[{name,score,hits,date}], me, total}
 
-   Moderation (env MODERATION = "pre" by default): a nickname is shown only after the owner approves it;
-   until then the table shows "Игрок XXXX". MODERATION=post shows nicknames at once (still filtered).
+   Moderation (env MODERATION): "post" by default — nicknames are shown at once (filtered; the owner can hide/rename/ban in the admin page).
+   MODERATION=pre shows a nickname only after the owner approves it; until then the table shows "Игрок XXXX".
    Admin (env ADMIN_KEY, long random string): POST ?action=admin {key, op, ...}
      op: list | approve {device} | rename {device,nick} | hide {device} | delete {device, ban} | unban {device} | words {words:[...]}
 */
@@ -19,7 +19,7 @@ const crypto = require('crypto');
 const Core = require('./core.js');
 
 const DIR = process.env.STORE_DIR || '/function/storage/data';
-const MODE = (process.env.MODERATION || 'pre').toLowerCase() === 'post' ? 'post' : 'pre';
+const MODE = (process.env.MODERATION || 'post').toLowerCase() === 'pre' ? 'pre' : 'post';
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const TICKET_TTL = 6 * 3600 * 1000;     // a ticket can be used within 6 hours
 const WALL_SLACK = 3;                    // seconds: real time may not be shorter than game time minus this
