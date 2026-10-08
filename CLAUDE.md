@@ -21,7 +21,11 @@ A theme = `vars` (CSS tokens: --c1 normal sector rgb, --c2 bonus rgb, --c3 needl
 To add a skin: put sounds in `docs/themes/<id>/`, add a THEMES entry; new background/overlay/lock looks need a new renderer `type` (currently only bg `city`, overlay `drops`, lock `glass`).
 `ice` is a palette-only demo; delete it when a real second skin exists.
 
+## Core & leaderboard
+Rules live in `docs/core.js` (UMD, used by the game and the server): mulberry32 seeded RNG, 120 Hz fixed tick, clicks applied at tick start, `replay(seed, clicks)` recomputes score. Never use Math.random/time/trig inside core. Visual effects stay in index.html.
+Server: `server/index.js` = Yandex Cloud Function, storage = Object Storage bucket mounted at `/function/storage/data` (one JSON per ticket/device, no rename). Flow: `ticket` (server seed, prefetched) → play → `submit` clicks → server replays, checks ticket single-use, device match, TTL 6 h, wall-clock ≥ game time − 3 s, nick filter. `top` = best per device.
+Client: `LB_URL` const in index.html (empty = leaderboard hidden). Tuned params (≠ DEFAULTS) are never submitted. Failed submits retry on next launch (`srq_pending`).
+Deploy: `server/build.sh` → `srulque-server.zip`; owner uploads it in the Yandex console (see `server/DEPLOY.md`).
+
 ## Roadmap
-1. Deterministic core (seeded RNG + fixed timestep) before any leaderboard.
-2. Global leaderboard with server-side replay validation.
-3. Google Play (AAB, closed test).
+1. Google Play (AAB, closed test).

@@ -1,0 +1,7 @@
+{
+  "name": "srulque-leaderboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Yandex Cloud Function: Srulque leaderboard with server-side replay validation",
+  "main": "index.js"
+}

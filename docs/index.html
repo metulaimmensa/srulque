@@ -109,6 +109,17 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 details{width:100%;text-align:left;border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
 summary{cursor:pointer;color:var(--muted);font:700 .74rem var(--f-display);letter-spacing:.16em;text-transform:uppercase}
 .grid{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.tabs{display:flex;gap:6px;width:100%}
+.tab{flex:1;font:700 .78rem var(--f-display);letter-spacing:.18em;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--hair);border-radius:8px;padding:8px;cursor:pointer}
+.tab.on{color:var(--ink);border-color:rgba(var(--c1),.8);box-shadow:0 0 10px rgba(var(--c1),.35)}
+.lbme{font-size:.84rem;color:var(--muted)}
+.lb{width:100%;display:flex;flex-direction:column;gap:8px;align-items:center}
+.nickform{display:flex;gap:8px;width:100%}
+.nickform input,.f input.txt{flex:1;min-width:0;background:rgba(0,0,0,.35);color:var(--ink);border:1px solid var(--hair);border-radius:8px;padding:9px 10px;font:500 .9rem var(--f-body)}
+.f input.txt{flex:none;width:150px;padding:6px 8px;font-size:.85rem}
+.nickform input:focus-visible,.f input.txt:focus-visible{outline:2px solid rgb(var(--c2-hi));outline-offset:2px}
+.lbstatus{font-size:.86rem;color:var(--muted);min-height:1.2em}
+.lbstatus b{color:var(--ink);font-family:var(--f-display);letter-spacing:.04em}
 .credit{font:700 1.05rem var(--f-display);letter-spacing:.12em;color:var(--ink)}
 .skins-h{font:700 .72rem var(--f-display);letter-spacing:.2em;color:var(--muted)}
 .skins{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
@@ -172,8 +183,10 @@ kbd{font-family:var(--f-display);border:1px solid var(--hair);border-radius:4px;
 
     <div class="panel" id="pScores" hidden>
       <h3>РЕКОРДЫ</h3>
+      <div class="tabs" role="tablist"><button class="tab on" id="tabMine" role="tab" aria-selected="true">МОИ</button><button class="tab" id="tabWorld" role="tab" aria-selected="false">МИР</button></div>
       <table class="scores" id="scoreTable"></table>
       <div class="empty" id="scoreEmpty">Пока пусто. Сыграй хотя бы раз.</div>
+      <div class="lbme" id="lbMe" hidden></div>
       <button class="ghost" data-go="pMain">НАЗАД</button>
     </div>
 
@@ -182,6 +195,7 @@ kbd{font-family:var(--f-display);border:1px solid var(--hair);border-radius:4px;
       <div class="set">
         <div class="skins-h">СКИН</div>
         <div class="skins" id="skins"></div>
+        <div class="f" id="nickRow" hidden><label for="nickSet">Ник в таблице</label><input id="nickSet" class="txt" maxlength="16" autocomplete="nickname" placeholder="не задан"></div>
         <div class="f"><label for="v_music">Музыка</label><input id="v_music" type="range" min="0" max="1" step="0.01"></div>
         <div class="f"><label for="v_sfx">Эффекты</label><input id="v_sfx" type="range" min="0" max="1" step="0.01"></div>
         <div class="f"><label for="v_drops" data-t="overlay">Капли на экране</label><input id="v_drops" type="range" min="0" max="1" step="0.05"></div>
@@ -225,6 +239,10 @@ kbd{font-family:var(--f-display);border:1px solid var(--hair);border-radius:4px;
       <div class="big" id="finalScore">0</div>
       <div class="badge" id="recBadge" hidden>НОВЫЙ РЕКОРД</div>
       <p id="finalStats"></p>
+      <div class="lb" id="lbOver" hidden>
+        <form class="nickform" id="nickForm" hidden><input id="nickInput" maxlength="16" autocomplete="nickname" placeholder="Твой ник" aria-label="Ник для таблицы"><button class="ghost" type="submit">В ТАБЛИЦУ</button></form>
+        <div class="lbstatus" id="lbStatus"></div>
+      </div>
       <div class="btns"><button class="play" data-act="play">ЕЩЁ РАЗ</button><button class="ghost" data-act="menu">МЕНЮ</button></div>
     </div>
   </div>
@@ -310,11 +328,81 @@ showBest();
 let lastEntry=null;
 function addScore(e){scores.push(e);scores.sort((a,b)=>b.s-a.s);scores=scores.slice(0,10);store.set('srq_scores',scores);store.set('lp_best',bestScore());lastEntry=e}
 function renderScores(){
+  if(scoreTab==='world'){renderWorld();return}
+  $('lbMe').hidden=true;$('scoreEmpty').textContent='Пока пусто. Сыграй хотя бы раз.';
   const t=$('scoreTable');t.innerHTML='';$('scoreEmpty').hidden=scores.length>0;
   scores.forEach((e,i)=>{const tr=document.createElement('tr');if(e===lastEntry)tr.className='me';
     const d=new Date(e.d);const ds=d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
     tr.innerHTML=`<td class="n">${i+1}</td><td>${ds}${e.h!=null?` · ${e.h} попад.`:''}</td><td class="s">${e.s.toLocaleString('ru-RU')}</td>`;t.appendChild(tr)});
 }
+
+/* ---------- global leaderboard ----------
+   The server hands out a ticket (seed) before the game; after it we send only the click ticks.
+   The server replays the game with core.js and computes the score itself. */
+const LB_URL='';                       // Yandex Cloud Function link, filled in after deploy
+const LB=!!LB_URL;
+function rid(n){const a=new Uint8Array(n);try{crypto.getRandomValues(a)}catch(_){for(let i=0;i<n;i++)a[i]=Math.random()*256|0}return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+let device=store.get('srq_device',null);if(!device){device=rid(16);store.set('srq_device',device)}
+let nick=store.get('srq_nick','');
+let ticket=null,gameTicket=null,pending=store.get('srq_pending',null),scoreTab='mine';
+async function api(action,body,q=''){
+  const c=new AbortController(),to=setTimeout(()=>c.abort(),8000);
+  try{
+    const r=await fetch(LB_URL+(LB_URL.includes('?')?'&':'?')+'action='+action+q,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:c.signal});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw Object.assign(new Error(j.error||('HTTP '+r.status)),{status:r.status});
+    return j;
+  }finally{clearTimeout(to)}
+}
+async function prefetchTicket(){if(!LB||ticket)return;try{const t=await api('ticket',{device});ticket={ticket:t.ticket,seed:t.seed>>>0,at:Date.now()}}catch(_){}}
+function takeTicket(){const t=ticket;ticket=null;return t&&Date.now()-t.at<5*3600e3?t:null}
+const lbStatus=t=>{$('lbOver').hidden=false;$('lbStatus').innerHTML=t};
+async function submitPending(quiet){
+  if(!LB||!pending||!nick)return;
+  if(!quiet)lbStatus('Отправляю в общую таблицу…');
+  try{
+    const r=await api('submit',{ticket:pending.ticket,device,nick,clicks:pending.clicks});
+    pending=null;store.set('srq_pending',null);
+    if(!quiet)lbStatus(`В мире: <b>#${r.rank}</b> из ${r.total}`+(r.improved?' · новый личный рекорд':` · твой лучший: ${r.best.toLocaleString('ru-RU')}`));
+  }catch(e){
+    if(e.status===400&&/nick/.test(e.message)){nick='';store.set('srq_nick','');if(!quiet){$('nickForm').hidden=false;lbStatus('Такой ник не пройдёт. Другой?')}return}
+    if(e.status){pending=null;store.set('srq_pending',null);if(!quiet)lbStatus('Сервер не принял результат.');return}
+    if(!quiet)lbStatus('Нет связи с сервером. Отправлю при следующем запуске.');
+  }
+}
+function lbAfterGame(run,tk){
+  $('nickForm').hidden=true;$('lbOver').hidden=true;
+  if(!LB||run.score<=0)return;
+  if(!run.ranked){return}
+  if(!tk){lbStatus('Не было связи с сервером на старте, в общую таблицу эта партия не попадёт.');return}
+  pending={ticket:tk.ticket,clicks:run.clicks,score:run.score};store.set('srq_pending',pending);
+  if(nick)submitPending(false);
+  else{$('lbOver').hidden=false;$('nickForm').hidden=false;$('lbStatus').textContent='Придумай ник, чтобы попасть в общую таблицу.';setTimeout(()=>{try{$('nickInput').focus()}catch(_){}},50)}
+}
+$('nickForm').addEventListener('submit',e=>{e.preventDefault();const v=$('nickInput').value.replace(/\s+/g,' ').trim();if(v.length<2){$('lbStatus').textContent='Минимум 2 символа.';return}
+  nick=v;store.set('srq_nick',nick);$('nickSet').value=nick;$('nickForm').hidden=true;submitPending(false)});
+$('nickSet').value=nick;
+$('nickSet').addEventListener('change',e=>{const v=e.target.value.replace(/\s+/g,' ').trim();if(v.length>=2){nick=v;store.set('srq_nick',nick)}else e.target.value=nick});
+function setTab(t){scoreTab=t;$('tabMine').classList.toggle('on',t==='mine');$('tabWorld').classList.toggle('on',t==='world');
+  $('tabMine').setAttribute('aria-selected',t==='mine');$('tabWorld').setAttribute('aria-selected',t==='world');renderScores()}
+$('tabMine').addEventListener('click',e=>{e.stopPropagation();setTab('mine')});
+$('tabWorld').addEventListener('click',e=>{e.stopPropagation();setTab('world')});
+let topReq=0;
+async function renderWorld(){
+  const t=$('scoreTable'),me=$('lbMe'),req=++topReq;t.innerHTML='';me.hidden=true;
+  $('scoreEmpty').hidden=false;$('scoreEmpty').textContent='Загружаю…';
+  try{
+    const r=await api('top',null,'&device='+encodeURIComponent(device));if(req!==topReq||scoreTab!=='world')return;
+    $('scoreEmpty').hidden=r.top.length>0;$('scoreEmpty').textContent='Таблица пока пустая. Будь первым.';
+    r.top.forEach((e,i)=>{const tr=document.createElement('tr');if(r.me&&r.me.rank===i+1)tr.className='me';
+      const n=document.createElement('td');n.className='n';n.textContent=i+1;
+      const who=document.createElement('td');who.textContent=e.nick;
+      const sc=document.createElement('td');sc.className='s';sc.textContent=e.score.toLocaleString('ru-RU');
+      tr.append(n,who,sc);t.appendChild(tr)});
+    me.hidden=false;me.textContent=r.me?`Ты: #${r.me.rank} из ${r.total} · ${r.me.score.toLocaleString('ru-RU')}`:`Тебя пока нет в таблице. Игроков: ${r.total}`;
+  }catch(_){if(req!==topReq)return;$('scoreEmpty').hidden=false;$('scoreEmpty').textContent='Нет связи с сервером таблицы.'}
+}
+if(!LB){$('tabMine').parentElement.hidden=true}else{$('nickRow').hidden=false}
 
 /* ---------- screens ---------- */
 const PANELS=['pMain','pScores','pSettings','pRules','pCredits','pPause','pOver'];
@@ -504,10 +592,11 @@ function end(){
   $('finalScore').textContent=S.score.toLocaleString('ru-RU');
   $('recBadge').hidden=!rec;
   $('finalStats').textContent=`Попаданий ${S.hits} (${TH.text.bonusPl} ${S.blue}) · промахов ${S.miss} · ${S.t.toFixed(1)} с`+(ranked?'':' · параметры изменены, в общую таблицу не идёт');
+  lbAfterGame(lastRun,gameTicket);gameTicket=null;
   show('pOver');
 }
 function start(){
-  unlock();newGame(newSeed());running=true;paused=false;applyVol();last=performance.now();
+  unlock();gameTicket=LB&&Core.sameParams(P)?takeTicket():null;newGame(gameTicket?gameTicket.seed:newSeed());running=true;prefetchTicket();paused=false;applyVol();last=performance.now();
   hideAll();document.body.classList.add('playing');
   menuMusic(false);gameMusicStart(0.05);
 }
@@ -684,6 +773,7 @@ function renderSkins(){
   }
 }
 applyTheme(themeId,true);
+if(LB){prefetchTicket();submitPending(true)}
 
 /* ---------- loop & input ---------- */
 function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;if(running&&!paused)step(dt);draw(paused?0:dt);hud();drawCity(dt);drawDrops(dt);requestAnimationFrame(loop)}
