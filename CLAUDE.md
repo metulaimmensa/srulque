@@ -12,15 +12,18 @@ blue chance 0.25, +1.5 s; start 30 s; spawn interval max(0.45, 1.40 − 0.026·n
 No gameplay settings for players: P = DEFAULTS, frozen.
 
 ## Audio
-Menu: pad loop `music_pad.wav` (79 BPM, 8 bars) via WebAudio; drum sequencer locked to it: kick/snare from bar 5, hats on last three 16ths of each beat from bar 9, drums through 2.6 kHz lowpass.
-Game: `music_retrowave.mp3` via <audio> + MediaElementSource; tape spin-up 0.25→1 over 2.5 s on start, tape-stop on end. SFX gains are loudness-matched (see GAIN/MUSIC_BASE).
+Per theme (`audio` in THEMES). Cyber: menu = pad loop `music_pad.wav` (79 BPM) + drum sequencer (kick/snare from bar 5, hats from bar 9, 2.6 kHz lowpass); game = `music_retrowave.mp3` (owner's own edit, 98.8 s) via <audio> + MediaElementSource, `gameMode:'tape'`: spin-up 0.25→1 over 2.5 s, tape-stop on end.
+Steam: `menu.mode:'loop'` (`music_menu.mp3`, 120 BPM, loop 48.000 s) and `gameMode:'loop'` (`music_game.mp3`, 142 BPM, loop 94.648 s, owner's version without lead): seamless WebAudio buffer loops, mp3 lead-in detected at runtime, NO speed changes. `start_crash.mp3` on start, `lose_fx44.mp3` on end, synthesized `tick.wav` with pitch rise (`tickRise`).
+End timings per theme in `audio.end`. Each menu track has its own fader; on theme switch the new one starts only after the old faded out (`A.menuFreeAt`). SFX gains are loudness-matched (GAIN/MUSIC_BASE).
 
 ## Skins (done; planned monetization)
-All setting-dependent things live in `THEMES` in `docs/index.html`; gameplay never reads a theme. Switched live via `applyTheme(id)`, picked in Settings, saved as `srq_theme`.
-A theme = `vars` (CSS tokens: --c1 normal sector rgb, --c2 bonus rgb, --c3 needle/accent, --tint glass tint, fonts), `text`, `canvas` (sector/needle/rim/particle colors), `bg` (renderer `type` + params), `overlay` (`type` + params), `lock` (material class on body[data-lock]), `audio` (`dir` = `docs/themes/<id>/`, file names, gains, menu pad bpm + drum pattern).
-`extends:'cyber'` inherits everything not overridden. `free:false` hides it behind `srq_owned` (purchase hook, no payments yet).
-To add a skin: put sounds in `docs/themes/<id>/`, add a THEMES entry; new background/overlay/lock looks need a new renderer `type` (currently only bg `city`, overlay `drops`, lock `glass`).
-`ice` is a palette-only demo; delete it when a real second skin exists.
+All setting-dependent things live in `THEMES` in `docs/index.html`; gameplay never reads a theme. Switched live via `applyTheme(id)`, picked in «Внешний вид» (main menu + settings), saved as `srq_theme`; last palette per world in `srq_palette`.
+Worlds (`world` field, names in `WORLDS`): cyber = `cyber` (Неон) + `ice` (Лёд); steam = `steam` (Латунь) + `steam2` (Кузня).
+A theme = `vars` (CSS tokens), `text`, `canvas` (sector/needle/rim colors, `style`, `glowK`), `bg` (renderer `type` + params), `overlay` (`type` + params), `lock` (body[data-lock]), `audio`.
+`extends` inherits everything not overridden. `free:false` hides it behind `srq_owned` (purchase hook, no payments yet).
+Renderers: bg `city` (neon city + rain) / `works` (machine-room wall: plates, pipes with elbows, valves, turning gears, Edison tube bulbs, light-map multiply, dust motes; gauges are sprites `docs/themes/steam/img/gauge*.png` with live needles); overlay `drops` / `steam` (steam puffs + sparks from VENTS, kept clear of the lock); lock `glass` / `brass` (worn ring, square-tooth gear, sooty dial, dirty sector plates, clock hand, falling sparks on hit).
+Weathering = runtime value-noise textures (`buildTextures`, `weather`, CSS `--grime`).
+Menu art: `bg.menuArt` image (steam: `img/menu.jpg`, owner's AI render with baked UI removed) shown behind menu panels (body.scene, lock hidden); `menuFilter` tints it per palette.
 
 ## Core & leaderboard
 Rules live in `docs/core.js` (UMD, used by the game and the server): mulberry32 seeded RNG, 120 Hz fixed tick, clicks applied at tick start, `replay(seed, clicks)` recomputes score. Never use Math.random/time/trig inside core. Visual effects stay in index.html.
