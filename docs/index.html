@@ -481,7 +481,7 @@ const LB=!!LB_URL;
 function rid(n){const a=new Uint8Array(n);try{crypto.getRandomValues(a)}catch(_){for(let i=0;i<n;i++)a[i]=Math.random()*256|0}return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 let device=store.get('srq_device',null);if(!device){device=rid(16);store.set('srq_device',device)}
 let nick=store.get('srq_nick','');
-let ticket=null,gameTicket=null,pending=store.get('srq_pending',null),scoreTab='mine';
+let tickets=[],ticketReq=null,gameTicket=null,pending=store.get('srq_pending',null),scoreTab='mine';
 if(pending&&pending.v!==window.SrulqueCore.VERSION){pending=null;store.set('srq_pending',null)}   // played on old rules
 async function api(action,body,q=''){
   const c=new AbortController(),to=setTimeout(()=>c.abort(),8000);
@@ -492,8 +492,15 @@ async function api(action,body,q=''){
     return j;
   }finally{clearTimeout(to)}
 }
-async function prefetchTicket(){if(!LB||ticket)return;try{const t=await api('ticket',{device});ticket={ticket:t.ticket,seed:t.seed>>>0,at:Date.now()}}catch(_){}}
-function takeTicket(){const t=ticket;ticket=null;return t&&Date.now()-t.at<5*3600e3?t:null}
+// two tickets are kept in stock, so even an instant restart has one; a ticket is good for 5 h here (6 h on the server)
+const freshTickets=()=>tickets=tickets.filter(t=>Date.now()-t.at<5*3600e3);
+function prefetchTicket(){
+  if(!LB)return Promise.resolve();freshTickets();
+  if(ticketReq||tickets.length>=2)return ticketReq||Promise.resolve();
+  ticketReq=api('ticket',{device}).then(t=>{tickets.push({ticket:t.ticket,seed:t.seed>>>0,at:Date.now()});ticketReq=null;prefetchTicket()},()=>{ticketReq=null});
+  return ticketReq;
+}
+function takeTicket(){freshTickets();return tickets.shift()||null}
 const lbStatus=t=>{$('lbOver').hidden=false;$('lbStatus').innerHTML=t};
 async function submitPending(quiet){
   if(!LB||!pending||!nick)return;
@@ -785,7 +792,16 @@ function end(){
   lbAfterGame(lastRun,gameTicket);gameTicket=null;
   show('pOver');
 }
+// with the leaderboard on, a game waits up to 3 s for a ticket (normally there is one in stock) so it can count
+let startWait=false;
 function start(){
+  if(startWait)return;unlock();
+  if(LB&&Core.sameParams(P)&&!freshTickets().length){
+    startWait=true;Promise.race([prefetchTicket(),new Promise(r=>setTimeout(r,3000))]).then(()=>{startWait=false;startNow()});return;
+  }
+  startNow();
+}
+function startNow(){
   if(A.endSfx){for(const x of A.endSfx){try{x.stop()}catch(_){}}A.endSfx=null}clearTimeout(A.menuT);
   unlock();gameTicket=LB&&Core.sameParams(P)?takeTicket():null;newGame(gameTicket?gameTicket.seed:newSeed());running=true;prefetchTicket();paused=false;applyVol();last=performance.now();
   hideAll();document.body.classList.add('playing');
