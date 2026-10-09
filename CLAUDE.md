@@ -33,5 +33,8 @@ Moderation: env `MODERATION` (default `post`: nick shown at once after filter; `
 Client: `LB_URL` const in index.html (empty = leaderboard hidden). Tuned params (≠ DEFAULTS) are never submitted. Failed submits retry on next launch (`srq_pending`).
 Deploy: `server/build.sh` → `srulque-server.zip`; owner uploads it in the Yandex console (see `server/DEPLOY.md`).
 
+## Roguelite mode (planned)
+Design agreed with the owner in `DESIGN.md` (lore, time-as-health, 5 systems, run structure, build order). Read it before touching the roguelite. Arcade + leaderboard stay untouched.
+
 ## Roadmap
 1. Google Play (AAB, closed test).
