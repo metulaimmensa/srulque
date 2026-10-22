@@ -6,13 +6,18 @@ The current arcade mode (pure rules, world leaderboard) stays as it is; everythi
 ## Lore
 - A crew of thieves travelling across worlds of the multiverse and stealing all sorts of weird things.
 - Every world is a setting, and our skins become worlds: neon city, steam works, later a panel block with a gopnik boss, etc.
-- The boss is the guard of the lock. He sensed something was wrong and is running in to catch the thief. He is drawn next to the lock.
+- **Every level is one character's house** (2026-10-22): break the front door, then the vault door, then the safe. The safe is the boss fight, the thing you came for.
+- **The boss is the owner and he is asleep.** The timer is a bar until he wakes up; he stirs, snores and mutters while you work. The owner's skillset is his sleep behaviour plus the house's defences (alarms, dogs, safe mechanisms). The running-guard idea is dropped.
 
 ## Core loop
-- **No HP. Time is health.** Time runs out, the fight is lost and the run ends.
+- **No HP. Time is health.** Time runs out, the owner wakes up and the run ends.
+- **Each lock has its own base time (30 s),** so a bad first door does not drag the whole house down.
+- **Time target per lock/boss** (set by lore, later modified by skills). Time left above the target pays extra currency and perks.
 - **Damage = hits × multiplier.** The multiplier grows from combos: a colour sequence, a streak without misses, edge hits.
-- A boss has HP and its own skillset. It attacks the player's time and the field:
-  - takes away seconds;
+  - It cools down by itself after ~1–1.5 s without hits.
+  - A miss takes away part of it, not all of it.
+- A boss has HP and its own skillset. The sleeping owner and his house attack the player's time and the field:
+  - takes away seconds (he almost wakes up);
   - speeds up the needle;
   - narrows sectors;
   - plants trap sectors.
@@ -26,6 +31,11 @@ The current arcade mode (pure rules, world leaderboard) stays as it is; everythi
    - Шумный: every miss costs a second.
    - Дальтоник: bonus sectors are not highlighted.
 2. **Relics (jokers).** Each one bends a rule, and they stack into builds. Bought with money between fights, Balatro-style.
+   - **Wanted later: many more builds, including a couple of absurd, counter-intuitive ones that win "from the opposite".** Like Balatro's one-card-plus-discards builds or Hearthstone fatigue decks: value out of nothing. Seed ideas, nothing decided:
+     - misses feed the multiplier instead of draining it;
+     - damage grows the closer the owner is to waking up;
+     - waiting builds damage (the multiplier is the time since the last hit);
+     - only blue sectors count, but for a lot.
 3. **Skills.**
    - They do not live in a button. After an on-board condition is met (colour sequence, high multiplier, N hits without a miss, surviving at 1 s…), a skill sector appears on the circle and has to be hit. Both attacking and defensive skills.
    - Skills are tied to bosses: meeting the boss's condition during its fight guarantees the unlock.
@@ -56,6 +66,7 @@ The current arcade mode (pure rules, world leaderboard) stays as it is; everythi
 ## Open questions
 - Currency: where money comes from, e.g. overkill damage, speed, leftover time.
 - Saving mid-run (phones close apps).
+- Heir trait «Шумный» fits the sleeping owner perfectly: noise (misses) makes him wake up faster.
 - Leaderboard for the roguelite: deepest world / boss reached, a daily seeded run, or none.
 - Which skins stay pure paid cosmetics vs. which are worlds.
 - How Левша "upside down" reads at 128°/s.
