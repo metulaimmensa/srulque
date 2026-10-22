@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111113">
+<meta name="robots" content="noindex">
+<title>Srulque — дом (прототип)</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* Grey prototype of the roguelite: one house (door, vault, safe). Function first, no art yet. */
+:root{
+  --bg:#111113; --panel:#1b1b1f; --line:#2c2c33; --ink:#ececef; --muted:#9a9aa4;
+  --red:217,74,90; --blue:74,143,217; --gold:240,196,90; --good:#6fcf8f; --bad:#e3655b;
+  --f-display:'Tektur','Bahnschrift','Arial Narrow',system-ui,sans-serif; --f-body:'Manrope',system-ui,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 var(--f-body);touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.app{height:100%;max-width:560px;margin:0 auto;padding-inline:16px;padding-block:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.brand{font:900 1rem var(--f-display);letter-spacing:.2em}
+.coins{font:700 .95rem var(--f-display);color:rgb(var(--gold));font-variant-numeric:tabular-nums}
+.lockrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
+.lockname{font:700 1rem var(--f-display);letter-spacing:.06em}
+.locknote{font-size:.78rem;color:var(--muted);text-align:right;min-width:0}
+.bar{position:relative;height:16px;border-radius:4px;background:#000;border:1px solid var(--line);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;display:block;transition:width .12s linear}
+.bar span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 .72rem var(--f-display);letter-spacing:.06em;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000}
+#hpBar i{background:linear-gradient(90deg,#8a2f3a,#d94a5a)}
+#sleepBar i{background:linear-gradient(90deg,#2d4f7a,#5d8fd0)}
+#sleepBar.low i{background:linear-gradient(90deg,#7a3b2d,#e3655b)}
+#sleepBar .mark{position:absolute;top:-2px;bottom:-2px;width:2px;background:rgb(var(--gold));box-shadow:0 0 4px rgba(var(--gold),.8)}
+.barlbl{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:3px}
+.owner{min-height:1.4em;text-align:center;font:700 .85rem var(--f-display);letter-spacing:.08em;color:var(--muted)}
+.owner.warn{color:rgb(var(--gold));animation:blink .3s steps(2) infinite}
+.owner.hit{color:var(--bad)}
+@keyframes blink{50%{opacity:.35}}
+.stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+canvas#cv{width:min(100%,calc(100dvh - 330px));aspect-ratio:1/1;max-width:100%;display:block}
+.relics{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:26px}
+.chip{font:700 .7rem var(--f-display);letter-spacing:.06em;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.hint{font-size:.75rem;color:var(--muted);text-align:center}
+@media (hover:none) and (pointer:coarse){.hint{display:none}}
+
+.screen{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,10,12,.88)}
+.card{width:min(100%,460px);max-height:calc(100dvh - 32px);overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.card h2{margin:0;font:900 1.4rem var(--f-display);letter-spacing:.12em;text-align:center}
+.card h3{margin:0;font:700 .8rem var(--f-display);letter-spacing:.18em;color:var(--muted)}
+.card p{margin:0;color:var(--muted);font-size:.9rem}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:.9rem}
+.kv b{font-family:var(--f-display);font-variant-numeric:tabular-nums;text-align:right}
+button{font:700 .85rem var(--f-display);letter-spacing:.12em;color:var(--ink);background:#26262c;border:1px solid #3a3a44;border-radius:8px;padding:11px 14px;cursor:pointer}
+button.main{background:#e8e8ec;color:#111;border-color:#e8e8ec}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid rgb(var(--gold));outline-offset:2px}
+.offers{display:grid;gap:8px}
+.offer{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#141418}
+.offer .n{font:700 .9rem var(--f-display);letter-spacing:.04em}
+.offer .t{grid-column:1;font-size:.8rem;color:var(--muted)}
+.offer button{grid-row:1/span 2;grid-column:2;padding:8px 10px;font-size:.75rem}
+.price{color:rgb(var(--gold))}
+.win{color:var(--good)}.lose{color:var(--bad)}
+.rules{font-size:.85rem;color:var(--muted);display:flex;flex-direction:column;gap:6px;margin:0;padding-left:18px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div class="brand">SRULQUE · ДОМ</div><div class="coins" id="coins">◎ 0</div></div>
+  <div class="lockrow"><div class="lockname" id="lockName">—</div><div class="locknote" id="lockNote"></div></div>
+  <div class="bar" id="hpBar"><i></i><span id="hpTxt"></span></div>
+  <div>
+    <div class="barlbl"><span>СОН ХОЗЯИНА</span><span id="targetTxt"></span></div>
+    <div class="bar" id="sleepBar"><i></i><div class="mark" id="mark"></div><span id="sleepTxt"></span></div>
+  </div>
+  <div class="owner" id="owner">ХОЗЯИН СПИТ</div>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="relics" id="relics"></div>
+  <div class="hint">ЛКМ, тап или Space: взлом</div>
+</div>
+
+<div class="screen" id="scrTitle">
+  <div class="card">
+    <h2>ДОМ</h2>
+    <p>Прототип рогалика. Графики нет, только правила. Проверяем одно: хочется ли сыграть ещё раз.</p>
+    <ul class="rules">
+      <li>Ты вскрываешь дом: входная дверь, дверь хранилища, сейф.</li>
+      <li>Полоска сна — твоё время. Проснулся хозяин — забег окончен. У каждого замка свои 30 с, синие сектора дают +1,5 с.</li>
+      <li>Урон = 10 × множитель. Каждое попадание подряд +0,2 к множителю. Без попаданий 1,5 с — он остывает, промах отнимает 1,0.</li>
+      <li>Попал в светлую середину сектора — «Чисто!», урон ×1,5.</li>
+      <li>Осталось времени больше цели (жёлтая черта) — больше монет. Между замками — лавка с реликвиями.</li>
+      <li>В сейфе хозяин ворочается: всхрапывает (−3 с) и сжимает сектора. Перед этим мигает предупреждение.</li>
+    </ul>
+    <button class="main" id="btnStart">НАЧАТЬ ЗАБЕГ</button>
+  </div>
+</div>
+
+<div class="screen" id="scrPre" hidden>
+  <div class="card">
+    <h3 id="preStep">ЗАМОК 1 ИЗ 3</h3>
+    <h2 id="preName">—</h2>
+    <div class="kv" id="preKv"></div>
+    <p id="preNote"></p>
+    <button class="main" id="btnGo">ВСКРЫТЬ</button>
+  </div>
+</div>
+
+<div class="screen" id="scrWin" hidden>
+  <div class="card">
+    <h2 class="win">ВСКРЫТО</h2>
+    <div class="kv" id="winKv"></div>
+    <button class="main" id="btnToShop">В ЛАВКУ</button>
+  </div>
+</div>
+
+<div class="screen" id="scrShop" hidden>
+  <div class="card">
+    <h2>ЛАВКА</h2>
+    <div class="kv"><span>Монеты</span><b class="price" id="shopCoins">0</b><span>Слоты</span><b id="shopSlots">0/4</b></div>
+    <h3>НА ПРИЛАВКЕ</h3>
+    <div class="offers" id="offers"></div>
+    <h3>В КАРМАНЕ</h3>
+    <div class="offers" id="owned"></div>
+    <button class="main" id="btnNext">ДАЛЬШЕ</button>
+  </div>
+</div>
+
+<div class="screen" id="scrEnd" hidden>
+  <div class="card">
+    <h2 id="endTitle">—</h2>
+    <p id="endSub"></p>
+    <div class="kv" id="endKv"></div>
+    <button class="main" id="btnAgain">ЕЩЁ ЗАБЕГ</button>
+  </div>
+</div>
+
+<script src="core.js"></script>
+<script src="rogue-core.js"></script>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const Core=window.SrulqueCore,Rg=window.SrulqueRogue,TICK=Core.TICK,adiff=Core.adiff;
+const SLOTS=4;
+const fmt=n=>Math.round(n).toLocaleString('ru-RU');
+
+/* ---------- audio: borrowed from the cyber skin, plus a synthesized snore ---------- */
+const A={ctx:null,bufs:{},last:-1};
+function initAudio(){
+  if(A.ctx)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  try{A.ctx=new AC();A.out=A.ctx.createGain();A.out.gain.value=0.8;A.out.connect(A.ctx.destination)}catch(_){A.ctx=null;return}
+  const files={hit1:'hit1.wav',hit2:'hit2.wav',hit3:'hit3.wav',hit4:'hit4.wav',hit5:'hit5.wav',hit6:'hit6.wav',miss:'miss.wav',blue:'blue.wav',tick:'tick.wav',lose:'lose_riot.wav',win:'record.mp3'};
+  for(const k in files)fetch('themes/cyber/'+files[k]).then(r=>r.arrayBuffer()).then(b=>new Promise((res,rej)=>A.ctx.decodeAudioData(b,res,rej))).then(buf=>A.bufs[k]=buf).catch(()=>{});
+}
+function unlock(){initAudio();if(A.ctx&&A.ctx.state!=='running')A.ctx.resume().catch(()=>{})}
+function play(k,gain=1,rate=1){if(!A.ctx||!A.bufs[k])return;const s=A.ctx.createBufferSource();s.buffer=A.bufs[k];s.playbackRate.value=rate;const g=A.ctx.createGain();g.gain.value=gain;s.connect(g);g.connect(A.out);s.start()}
+function hitSound(crit){let i;do{i=1+Math.floor(Math.random()*6)}while(i===A.last);A.last=i;play('hit'+i,crit?0.6:0.42,crit?1.12:0.97+Math.random()*0.06)}
+function snore(){ // filtered noise swelling and falling, twice
+  if(!A.ctx)return;const c=A.ctx,t=c.currentTime,len=1.4,buf=c.createBuffer(1,c.sampleRate*len,c.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const s=c.createBufferSource();s.buffer=buf;const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=380;f.Q.value=6;
+  const g=c.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.9,t+0.35);g.gain.linearRampToValueAtTime(0.1,t+0.6);g.gain.linearRampToValueAtTime(0.7,t+0.95);g.gain.linearRampToValueAtTime(0,t+1.35);
+  f.frequency.setValueAtTime(260,t);f.frequency.linearRampToValueAtTime(520,t+0.35);f.frequency.linearRampToValueAtTime(240,t+1.3);
+  s.connect(f);f.connect(g);g.connect(A.out);s.start(t);
+}
+function squeezeSound(){if(!A.ctx)return;const c=A.ctx,t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(70,t+0.25);g.gain.setValueAtTime(0.18,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.connect(g);g.connect(A.out);o.start(t);o.stop(t+0.32)}
+function warnSound(){if(!A.ctx)return;const c=A.ctx,t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(140,t);o.frequency.linearRampToValueAtTime(110,t+0.5);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.25,t+0.1);g.gain.linearRampToValueAtTime(0,t+0.6);o.connect(g);g.connect(A.out);o.start(t);o.stop(t+0.62)}
+
+/* ---------- run state ---------- */
+let run=null,fight=null,S=null,clickQ=0,acc=0,last=0,playing=false,paused=false;
+const fx={parts:[],floats:[],flash:0,shake:0};
+function newSeed(){try{return crypto.getRandomValues(new Uint32Array(1))[0]}catch(_){return (Math.random()*4294967296)>>>0}}
+function startRun(){
+  const seed=newSeed();
+  run={seed,r:Core.rng(seed),idx:0,coins:0,relics:[],dmg:0,best:1,hits:0,crits:0,miss:0,locks:0};
+  updateTop();preFight();
+}
+function updateTop(){
+  $('coins').textContent='◎ '+(run?run.coins:0);
+  const box=$('relics');box.innerHTML='';
+  for(const id of (run?run.relics:[])){const c=document.createElement('span');c.className='chip';c.textContent=Rg.RELICS[id].name;c.title=Rg.RELICS[id].text;box.appendChild(c)}
+}
+function show(id){for(const s of ['scrTitle','scrPre','scrWin','scrShop','scrEnd'])$(s).hidden=s!==id}
+function preFight(){
+  const L=Rg.HOUSE[run.idx];
+  $('preStep').textContent=`ЗАМОК ${run.idx+1} ИЗ ${Rg.HOUSE.length}`;$('preName').textContent=L.name.toUpperCase();
+  $('preKv').innerHTML=`<span>Прочность</span><b>${fmt(L.hp)}</b><span>Время</span><b>${Rg.TUNE.lockTime+(run.relics.includes('watch')?5:0)} с</b><span>Цель: остаток не меньше</span><b>${L.target} с</b>`;
+  $('preNote').textContent=L.note||'Разминка.';
+  setLockHud(L);show('scrPre');
+}
+function setLockHud(L){$('lockName').textContent=L.name.toUpperCase();$('lockNote').textContent=L.note||'';$('targetTxt').textContent=`цель: остаток ≥ ${L.target} с`}
+function beginFight(){
+  unlock();
+  const L=Rg.HOUSE[run.idx];
+  fight=Rg.createFight((run.r()*4294967296)>>>0,L,run.relics);S=fight.S;clickQ=0;acc=0;fx.parts=[];fx.floats=[];
+  S.maxTime=S.timeLeft;S.lastSec=99;
+  $('owner').className='owner';$('owner').textContent=L.boss?'ХОЗЯИН СПИТ':'ХОЗЯИН СПИТ. ДВЕРЬ НЕ ЗНАЕТ, ЧТО ТЫ ЗДЕСЬ';
+  show(null);playing=true;paused=false;last=performance.now();
+}
+function endFight(){
+  playing=false;const L=Rg.HOUSE[run.idx];
+  run.dmg+=S.damage;run.best=Math.max(run.best,S.bestMult);run.hits+=S.hits;run.crits+=S.crits;run.miss+=S.miss;
+  if(!S.won){play('lose',0.55);endRun(false,`Хозяин проснулся на замке «${L.name}».`);return}
+  run.locks++;
+  const coins=Rg.coinsFor(L,S.timeLeft),bonus=coins-Rg.TUNE.coinsBase;run.coins+=coins;updateTop();
+  if(run.idx===Rg.HOUSE.length-1){play('win',0.5);endRun(true,'Сейф вскрыт, хозяин даже не перевернулся.');return}
+  play('blue',0.5,0.8);
+  $('winKv').innerHTML=`<span>Осталось времени</span><b>${S.timeLeft.toFixed(1)} с</b><span>Цель</span><b>${L.target} с</b>`+
+    `<span>Монеты</span><b class="price">+${Rg.TUNE.coinsBase}${bonus>0?` +${bonus} за время`:''}</b><span>Лучший множитель</span><b>×${S.bestMult.toFixed(1)}</b><span>«Чисто!»</span><b>${S.crits} из ${S.hits}</b>`;
+  show('scrWin');
+}
+function endRun(won,sub){
+  $('endTitle').textContent=won?'ДОМ ОБЧИЩЕН':'ПОЙМАН';$('endTitle').className=won?'win':'lose';$('endSub').textContent=sub;
+  $('endKv').innerHTML=`<span>Замков вскрыто</span><b>${run.locks} из ${Rg.HOUSE.length}</b><span>Весь урон</span><b>${fmt(run.dmg)}</b>`+
+    `<span>Лучший множитель</span><b>×${run.best.toFixed(1)}</b><span>Попаданий / «Чисто!» / промахов</span><b>${run.hits} / ${run.crits} / ${run.miss}</b>`+
+    `<span>Реликвии</span><b>${run.relics.map(id=>Rg.RELICS[id].name).join(', ')||'—'}</b>`;
+  show('scrEnd');
+}
+/* ---------- shop ---------- */
+function openShop(){
+  const pool=Object.keys(Rg.RELICS).filter(id=>!run.relics.includes(id));
+  run.offers=[];while(run.offers.length<3&&pool.length){run.offers.push(pool.splice(Math.floor(run.r()*pool.length),1)[0])}
+  renderShop();show('scrShop');
+}
+function renderShop(){
+  $('shopCoins').textContent='◎ '+run.coins;$('shopSlots').textContent=`${run.relics.length}/${SLOTS}`;
+  const offers=$('offers');offers.innerHTML='';
+  if(!run.offers.length)offers.innerHTML='<p>Пусто.</p>';
+  for(const id of run.offers){const R=Rg.RELICS[id],d=document.createElement('div');d.className='offer';
+    d.innerHTML=`<div class="n">${R.name} <span class="price">◎ ${R.price}</span></div><div class="t">${R.text}</div>`;
+    const b=document.createElement('button');b.textContent='КУПИТЬ';b.disabled=run.coins<R.price||run.relics.length>=SLOTS;
+    b.onclick=()=>{run.coins-=R.price;run.relics.push(id);run.offers=run.offers.filter(x=>x!==id);updateTop();renderShop()};d.appendChild(b);offers.appendChild(d)}
+  const owned=$('owned');owned.innerHTML='';
+  if(!run.relics.length)owned.innerHTML='<p>Пусто.</p>';
+  for(const id of run.relics){const R=Rg.RELICS[id],d=document.createElement('div');d.className='offer';const back=Math.floor(R.price/2);
+    d.innerHTML=`<div class="n">${R.name}</div><div class="t">${R.text}</div>`;
+    const b=document.createElement('button');b.textContent=`ПРОДАТЬ +${back}`;
+    b.onclick=()=>{run.coins+=back;run.relics=run.relics.filter(x=>x!==id);updateTop();renderShop()};d.appendChild(b);owned.appendChild(d)}
+  $('btnNext').textContent='ДАЛЬШЕ: '+Rg.HOUSE[run.idx+1].name.toUpperCase();
+}
+$('btnStart').onclick=()=>{unlock();startRun()};
+$('btnGo').onclick=beginFight;
+$('btnToShop').onclick=openShop;
+$('btnNext').onclick=()=>{run.idx++;preFight()};
+$('btnAgain').onclick=()=>{unlock();startRun()};
+
+/* ---------- fight loop: fixed ticks like the arcade, clicks applied at tick start ---------- */
+function pick(){if(playing&&!paused&&S&&!S.over)clickQ++}
+function applyClick(){
+  const r=fight.click();
+  if(r.type==='hit'){
+    hitSound(r.crit);if(r.sector.blue)play('blue',0.5);
+    fx.floats.push({a:S.angle,txt:(r.crit?'ЧИСТО! ':'')+'−'+r.damage,crit:r.crit,t:0});
+    for(let i=0;i<(r.crit?26:14);i++)fx.parts.push({a:S.angle+(Math.random()-.5)*10,r:0.2+Math.random()*0.8,vr:(Math.random()-.3)*0.6,t:0,life:0.35+Math.random()*0.4,c:r.crit?'240,196,90':(r.sector.blue?'120,180,255':'255,130,145')});
+    fx.flash=r.crit?1:0.5;
+  }else if(r.type==='miss'){play('miss',0.6);fx.shake=1}
+}
+function ownerEvents(){
+  const own=$('owner');
+  if(S.warn&&!S.warned){S.warned=true;own.className='owner warn';own.textContent=S.warn.type==='snore'?'ХОЗЯИН ВОРОЧАЕТСЯ…':'СЕЙФ ЩЁЛКАЕТ…';warnSound()}
+  for(const e of S.events){
+    if(e.type==='snore'){own.className='owner hit';own.textContent='ВСХРАП! −3 С';snore();S.warned=false;S.calmAt=S.t+1.6}
+    else if(e.type==='squeeze'){own.className='owner hit';own.textContent='СЖАТИЕ: СЕКТОРА УЖЕ';squeezeSound();S.warned=false;S.calmAt=S.t+1.6}
+    else if(e.type==='phase2'){own.className='owner hit';own.textContent='МЕХАНИЗМ РАЗОГНАН: СТРЕЛКА БЫСТРЕЕ';squeezeSound();S.calmAt=S.t+2}
+  }
+  S.events.length=0;
+  if(S.calmAt&&S.t>S.calmAt&&!S.warn){S.calmAt=0;own.className='owner';own.textContent='ХОЗЯИН СПИТ'}
+}
+function step(dt){
+  acc+=dt;
+  while(acc>=TICK&&!S.over){acc-=TICK;while(clickQ>0){clickQ--;applyClick()}fight.step();ownerEvents()}
+  const sec=Math.ceil(S.timeLeft);if(S.timeLeft<=5&&sec<S.lastSec&&!S.over){S.lastSec=sec;play('tick',1.2)}
+  if(S.over)endFight();
+}
+/* ---------- HUD ---------- */
+function hud(){
+  if(!S)return;
+  $('hpBar').firstElementChild.style.width=(100*S.hp/S.hpMax)+'%';$('hpTxt').textContent=`${fmt(S.hp)} / ${fmt(S.hpMax)}`;
+  const max=Math.max(S.maxTime,S.timeLeft);$('sleepBar').firstElementChild.style.width=(100*S.timeLeft/max)+'%';
+  $('mark').style.left=(100*fight.lock.target/max)+'%';$('sleepTxt').textContent=S.timeLeft.toFixed(1)+' с';
+  $('sleepBar').classList.toggle('low',S.timeLeft<fight.lock.target);
+}
+/* ---------- lock render (grey) ---------- */
+const cv=$('cv'),g=cv.getContext('2d');let W=0,DPR=1;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);W=cv.getBoundingClientRect().width;cv.width=Math.round(W*DPR);cv.height=Math.round(W*DPR)}
+new ResizeObserver(resize).observe(cv);
+const rad=d=>(d-90)*Math.PI/180;
+function wedge(cx,cy,r0,r1,a0,a1){g.beginPath();g.arc(cx,cy,r1,a0,a1);g.arc(cx,cy,r0,a1,a0,true);g.closePath()}
+function draw(dt){
+  g.setTransform(DPR,0,0,DPR,0,0);g.clearRect(0,0,W,W);if(!W)return;
+  fx.shake=Math.max(0,fx.shake-dt*4);fx.flash=Math.max(0,fx.flash-dt*3);
+  const sh=fx.shake*W*0.012,cx=W/2+(Math.random()-.5)*sh,cy=W/2+(Math.random()-.5)*sh,rIn=W*0.25,rOut=W*0.43;
+  g.fillStyle='#18181c';g.beginPath();g.arc(cx,cy,rOut+W*0.02,0,Math.PI*2);g.moveTo(cx+rIn-W*0.01,cy);g.arc(cx,cy,rIn-W*0.01,0,Math.PI*2,true);g.fill();
+  g.strokeStyle='#2c2c33';g.lineWidth=1;for(let i=0;i<60;i++){const a=rad(i*6),l=i%5?rOut-W*0.015:rOut-W*0.035;g.beginPath();g.moveTo(cx+Math.cos(a)*l,cy+Math.sin(a)*l);g.lineTo(cx+Math.cos(a)*rOut,cy+Math.sin(a)*rOut);g.stroke()}
+  const danger=S&&S.timeLeft<5&&playing;
+  g.strokeStyle=danger?`rgba(227,101,91,${0.5+0.5*Math.abs(Math.sin(performance.now()/90))})`:(S&&S.t<S.squeezeUntil?'#a07a2a':'#3a3a44');g.lineWidth=W*0.012;g.beginPath();g.arc(cx,cy,rOut+W*0.035,0,7);g.stroke();
+  if(S){
+    for(const s of S.sectors){
+      const w=fight.width(s),col=s.blue?'74,143,217':'217,74,90',fade=Math.min(1,(S.t-s.born)/0.07);
+      g.fillStyle=`rgba(${col},${0.85*fade})`;wedge(cx,cy,rIn,rOut,rad(s.c-w/2),rad(s.c+w/2));g.fill();
+      const cz=w*fight.critZone;g.fillStyle=`rgba(255,255,255,${0.28*fade})`;wedge(cx,cy,rIn,rOut,rad(s.c-cz/2),rad(s.c+cz/2));g.fill();
+    }
+    for(const p of fx.parts){p.t+=dt;p.r+=p.vr*dt;const a=rad(p.a),rr=rIn+(rOut-rIn)*p.r,al=1-p.t/p.life;if(al<=0)continue;g.fillStyle=`rgba(${p.c},${al})`;g.beginPath();g.arc(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr,W*0.006*(0.5+al),0,7);g.fill()}
+    fx.parts=fx.parts.filter(p=>p.t<p.life);
+    const a=rad(S.angle),hot=S.frozen>0;
+    g.strokeStyle=hot?'#e3655b':'#f2f2f5';g.lineWidth=W*0.008;g.lineCap='round';g.beginPath();g.moveTo(cx+Math.cos(a)*(rIn+W*0.01),cy+Math.sin(a)*(rIn+W*0.01));g.lineTo(cx+Math.cos(a)*(rOut+W*0.02),cy+Math.sin(a)*(rOut+W*0.02));g.stroke();
+  }
+  // hub: multiplier big, time small
+  g.fillStyle=`rgba(240,196,90,${0.12*fx.flash})`;g.beginPath();g.arc(cx,cy,rIn-W*0.02,0,7);g.fill();
+  g.textAlign='center';g.textBaseline='middle';
+  const m=S?S.mult:1,hotM=m>=2.5;
+  g.fillStyle=hotM?'rgb(240,196,90)':'#ececef';g.font=`900 ${W*0.11}px Tektur, sans-serif`;g.fillText('×'+m.toFixed(1),cx,cy-W*0.02);
+  g.fillStyle='#9a9aa4';g.font=`700 ${W*0.032}px Tektur, sans-serif`;g.fillText('МНОЖИТЕЛЬ',cx,cy+W*0.065);
+  if(S&&S.t-S.lastHitT>Rg.TUNE.coolAfter&&m>1){g.fillStyle='#5d8fd0';g.fillText('ОСТЫВАЕТ',cx,cy+W*0.105)}
+  for(const f of fx.floats){f.t+=dt;const k=f.t/0.9;if(k>=1)continue;const a=rad(f.a),rr=rOut+W*0.06+k*W*0.04;
+    g.fillStyle=f.crit?`rgba(240,196,90,${1-k})`:`rgba(236,236,239,${1-k})`;g.font=`900 ${W*(f.crit?0.05:0.042)}px Tektur, sans-serif`;
+    g.fillText(f.txt,Math.min(W*0.8,Math.max(W*0.2,cx+Math.cos(a)*rr)),Math.min(W-W*0.04,Math.max(W*0.04,cy+Math.sin(a)*rr)))}
+  fx.floats=fx.floats.filter(f=>f.t<0.9);
+}
+function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;if(playing&&!paused)step(dt);hud();draw(paused?0:dt);requestAnimationFrame(loop)}
+requestAnimationFrame(t=>{last=t;loop(t)});
+addEventListener('pointerdown',e=>{if(e.button!==undefined&&e.button!==0)return;if(!playing)return;if(e.target.closest&&e.target.closest('button,.screen'))return;e.preventDefault();pick()},{passive:false});
+addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();if(playing)pick();else{const b=[...document.querySelectorAll('.screen:not([hidden]) button.main')][0];if(b&&!b.disabled)b.click()}}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing&&!paused){paused=true;$('owner').className='owner warn';$('owner').textContent='ПАУЗА: КОСНИСЬ, ЧТОБЫ ПРОДОЛЖИТЬ'}});
+// a paused fight resumes on the next tap anywhere
+addEventListener('pointerup',()=>{if(paused){paused=false;last=performance.now();$('owner').className='owner';$('owner').textContent='ХОЗЯИН СПИТ'}});
+window.__rogue={get S(){return S},get run(){return run}};
+})();
+</script>
+</body>
+</html>
